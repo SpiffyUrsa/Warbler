@@ -13,7 +13,8 @@ app = Flask(__name__)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
-app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get('DATABASE_URL', 'postgres:///warbler'))
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    os.environ.get('DATABASE_URL', 'postgres:///warbler'))
 # app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get('DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -202,6 +203,49 @@ def stop_following(follow_id):
     db.session.commit()
 
     return redirect(f"/users/{g.user.id}/following")
+
+
+@app.route('/users/liked/<int:message_id>', methods=['POST'])
+def like_message(message_id):
+    """ Have currently-logged-in-user like the message."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    liked_message = Message.query.get(message_id)
+    g.user.liked_messages.append(liked_message)
+    db.session.commit()
+
+    return redirect(f"/users/{g.user.id}/liked")
+
+
+@app.route('/users/unlike/<int:message_id>', methods=['POST'])
+def unlike_message(message_id):
+    """Have currently logged in user unlike a message."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    liked_message = Message.query.get(message_id)
+    g.user.liked_messages.remove(liked_message)
+    db.session.commit()
+
+    return redirect(f"/users/{g.user.id}/liked")
+
+
+@app.route('/users/<int:user_id>/liked')
+def show_liked(user_id):
+    """Displays the liked warbles of the currently logged in user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    user = User.query.get_or_404(user_id)
+
+    return render_template("users/liked.html", user=user)
 
 
 @app.route('/users/profile', methods=["GET", "POST"])
