@@ -112,7 +112,7 @@ def login():
 
     return render_template('users/login.html', form=form)
 
-
+# TODO: this is better as a POST
 @app.route('/logout')
 def logout():
     """Handle logout of user."""
