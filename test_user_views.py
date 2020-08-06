@@ -15,8 +15,8 @@ from models import db, User, Message, Follows
 # before we import our app, since that will have already
 # connected to the database
 
-os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
-# os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
+# os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
+os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
 
 # Now we can import app
 
@@ -96,12 +96,112 @@ class UserViewsTestCase(TestCase):
 
             self.assertEqual(resp.status_code, 200)
             self.assertIn(f"{self.user.username}", html)
+
+    def test_logged_in_following_view(self):
+        """Test to see if a logged in user can view other user's following page."""
+
+        with app.test_client() as client:
+            d = {"username": "testuser", "password": "HASHED_PASSWORD"}
+            resp = client.post('/login', data = d, follow_redirects=True)
+
+            other_user = User.signup(
+                email="test2@test.com",
+                username="testuser2",
+                password="HASHED_PASSWORD", 
+                image_url=None,
+            )
+
+            following_user = User.query.get_or_404(other_user.id)
+            g.user.followers.append(following_user)
+            db.session.commit()
+
+            resp = client.get(f'/users/{other_user.id}/following')
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(f"{self.user.username}", html)
             
+    def test_not_logged_in_follower_view(self):
+        """Test to see if a non-logged-in user can not view other user's followers page."""
 
+        with app.test_client() as client:
+            other_user = User.signup(
+                email="test2@test.com",
+                username="testuser2",
+                password="HASHED_PASSWORD", 
+                image_url=None,
+            )
 
+            resp = client.get(f'/users/{other_user.id}/followers', follow_redirects=True)
+            html = resp.get_data(as_text=True)
 
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("Access unauthorized.", html)
 
+    def test_not_logged_in_following_view(self):
+        """Test to see if a non-logged-in user can not view other user's following page."""
 
+        with app.test_client() as client:
+            other_user = User.signup(
+                email="test2@test.com",
+                username="testuser2",
+                password="HASHED_PASSWORD", 
+                image_url=None,
+            )
 
+            resp = client.get(f'/users/{other_user.id}/following', follow_redirects=True)
+            html = resp.get_data(as_text=True)
 
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("Access unauthorized.", html)
+
+    def test_logged_in_add_message(self):
+        """Test to see if a logged in user can add a message as themselves."""
+
+        with app.test_client() as client:
+            #login
+            d = {"username": "testuser", "password": "HASHED_PASSWORD"}
+            resp = client.post('/login', data = d, follow_redirects=True)
+
+            #create message
+            d = {"text": "Test text!"}
+            resp = client.post('/messages/new', data=d, follow_redirects=True)
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("Test text!", html)
+
+    def test_not_logged_in_add_message(self):
+        """Test to see if a non-logged-in user can not add a message as themselves."""
+
+        with app.test_client() as client:
+            #try to create message
+            d = {"text": "Test text!"}
+            resp = client.post('/messages/new', data=d, follow_redirects=True)
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("Access unauthorized.", html)
     
+    def test_logged_in_delete_message(self):
+        """Test to see if a logged in user can delete a message as themselves."""
+
+        with app.test_client() as client:
+            #login
+            d = {"username": "testuser", "password": "HASHED_PASSWORD"}
+            resp = client.post('/login', data = d, follow_redirects=True)
+
+            #create message
+            d = {"text": "Test text!"}
+            resp = client.post('/messages/new', data=d, follow_redirects=True)
+            
+            #select message
+            new_msg = Message.query.get(g.user.id).first()
+
+            #destroy message
+            d = {"text": "Test text!"}
+            resp = client.post(f'/messages/{}/delete', data=d, follow_redirects=True)
+            html = resp.get_data(as_text=True)
+
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("Test text!", html)
