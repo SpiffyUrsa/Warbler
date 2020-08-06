@@ -13,9 +13,10 @@ app = Flask(__name__)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    os.environ.get('DATABASE_URL', 'postgres:///warbler'))
-# app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get('DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
+# app.config['SQLALCHEMY_DATABASE_URI'] = (
+#     os.environ.get('DATABASE_URL', 'postgres:///warbler'))
+app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get(
+    'DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
@@ -79,6 +80,7 @@ def signup():
                 image_url=form.image_url.data or User.image_url.default.arg,
             )
             # db.session.commit() moved to User.signup()
+            # TODO: is this ok?
 
         except IntegrityError:
             flash("Username already taken", 'danger')
@@ -335,11 +337,12 @@ def messages_show(message_id):
 def messages_destroy(message_id):
     """Delete a message."""
 
-    if not g.user:
+    msg = Message.query.get(message_id)
+
+    if not g.user or g.user.id != msg.user_id:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
-    msg = Message.query.get(message_id)
     db.session.delete(msg)
     db.session.commit()
 

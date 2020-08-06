@@ -5,6 +5,7 @@
 #    python -m unittest test_user_model.py
 
 
+from app import app
 import os
 from unittest import TestCase
 from sqlalchemy.exc import IntegrityError
@@ -15,12 +16,11 @@ from models import db, User, Message, Follows
 # before we import our app, since that will have already
 # connected to the database
 
-os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
-# os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
+# os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
+os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
 
 # Now we can import app
 
-from app import app
 
 # Create our tables (we do this here, so we only create the tables
 # once for all tests --- in each test, we'll delete the data
@@ -71,7 +71,8 @@ class UserModelTestCase(TestCase):
         db.session.add(u)
         db.session.commit()
 
-        self.assertEqual(u.__repr__(), f"<User #{u.id}: {u.username}, {u.email}>")
+        self.assertEqual(
+            u.__repr__(), f"<User #{u.id}: {u.username}, {u.email}>")
 
     def test_is_following(self):
         """Does is_following successfully detect when user1 is following user2?"""
@@ -91,11 +92,10 @@ class UserModelTestCase(TestCase):
         db.session.add(u1)
         db.session.add(u2)
         u1.following.append(u2)
-        
+
         db.session.commit()
 
         self.assertTrue(u1.is_following(u2))
-        
 
     def test_is_not_following(self):
         """Does is_following successfully detect when user1 is not following user2?"""
@@ -115,7 +115,7 @@ class UserModelTestCase(TestCase):
         db.session.add(u1)
         db.session.add(u2)
         u1.following.append(u2)
-        
+
         db.session.commit()
 
         self.assertFalse(u2.is_following(u1))
@@ -138,7 +138,7 @@ class UserModelTestCase(TestCase):
         db.session.add(u1)
         db.session.add(u2)
         u1.followers.append(u2)
-        
+
         db.session.commit()
 
         self.assertTrue(u1.is_followed_by(u2))
@@ -161,7 +161,7 @@ class UserModelTestCase(TestCase):
         db.session.add(u1)
         db.session.add(u2)
         u1.followers.append(u2)
-        
+
         db.session.commit()
 
         self.assertFalse(u2.is_followed_by(u1))
@@ -170,7 +170,8 @@ class UserModelTestCase(TestCase):
         """Does User.signup successfully create a new user given valid credentials?"""
 
         # add u1 to db
-        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        u1 = User.signup("testuser1", "test1@test.com",
+                         "HASHED_PASSWORD", None)
 
         # check if u1 is in db
         response = User.query.get(u1.id)
@@ -180,20 +181,23 @@ class UserModelTestCase(TestCase):
         """Does User.signup fail to create a new user if any of the validations
         (e.g. uniqueness, non-nullable fields) fail?"""
 
-        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        u1 = User.signup("testuser1", "test1@test.com",
+                         "HASHED_PASSWORD", None)
 
         created = True
         try:
-            u2 = User.signup("testuser1", "test2@test.com", "HASHED_PASSWORD", None)
+            u2 = User.signup("testuser1", "test2@test.com",
+                             "HASHED_PASSWORD", None)
         except IntegrityError:
             created = False
 
         self.assertFalse(created)
-    
+
     def test_authenticate(self):
         """ Does User.authenticate successfully return a user when given valid credentials?"""
 
-        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        u1 = User.signup("testuser1", "test1@test.com",
+                         "HASHED_PASSWORD", None)
         auth_user = User.authenticate("testuser1", "HASHED_PASSWORD")
 
         self.assertEqual(u1, auth_user)
@@ -201,21 +205,17 @@ class UserModelTestCase(TestCase):
     def test_authenticate_invalid_username(self):
         """Does User.authenticate fail when the username is invalid?"""
 
-        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        u1 = User.signup("testuser1", "test1@test.com",
+                         "HASHED_PASSWORD", None)
         auth_user = User.authenticate("testuser2", "HASHED_PASSWORD")
 
         self.assertFalse(auth_user)
-    
+
     def test_authenticate_invalid_password(self):
         """Does User.authenticate fail when the password is invalid?"""
 
-        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        u1 = User.signup("testuser1", "test1@test.com",
+                         "HASHED_PASSWORD", None)
         auth_user = User.authenticate("testuser1", "WRONG_HASHED_PASSWORD")
 
         self.assertFalse(auth_user)
-
-    
-        
-
-    
-        
