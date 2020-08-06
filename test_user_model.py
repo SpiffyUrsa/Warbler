@@ -7,7 +7,7 @@
 
 import os
 from unittest import TestCase
-
+from sqlalchemy.exc import IntegrityError
 from models import db, User, Message, Follows
 
 # BEFORE we import our app, let's set an environmental variable
@@ -15,8 +15,8 @@ from models import db, User, Message, Follows
 # before we import our app, since that will have already
 # connected to the database
 
-# os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
-os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
+os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
+# os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
 
 # Now we can import app
 
@@ -30,14 +30,16 @@ db.create_all()
 
 
 class UserModelTestCase(TestCase):
-    """Test views for messages."""
+    """Test User Model."""
 
     def setUp(self):
         """Create test client, add sample data."""
 
+        db.session.rollback()
         User.query.delete()
         Message.query.delete()
         Follows.query.delete()
+        db.session.commit()
 
         self.client = app.test_client()
 
@@ -185,6 +187,35 @@ class UserModelTestCase(TestCase):
             u2 = User.signup("testuser1", "test2@test.com", "HASHED_PASSWORD", None)
         except IntegrityError:
             created = False
-        
+
         self.assertFalse(created)
+    
+    def test_authenticate(self):
+        """ Does User.authenticate successfully return a user when given valid credentials?"""
+
+        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        auth_user = User.authenticate("testuser1", "HASHED_PASSWORD")
+
+        self.assertEqual(u1, auth_user)
+
+    def test_authenticate_invalid_username(self):
+        """Does User.authenticate fail when the username is invalid?"""
+
+        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        auth_user = User.authenticate("testuser2", "HASHED_PASSWORD")
+
+        self.assertFalse(auth_user)
+    
+    def test_authenticate_invalid_password(self):
+        """Does User.authenticate fail when the password is invalid?"""
+
+        u1 = User.signup("testuser1", "test1@test.com", "HASHED_PASSWORD", None)
+        auth_user = User.authenticate("testuser1", "WRONG_HASHED_PASSWORD")
+
+        self.assertFalse(auth_user)
+
+    
+        
+
+    
         
