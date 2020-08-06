@@ -6,6 +6,23 @@
     {% for message in user.messages %}
 
     <li class="list-group-item">
+      {% if g.user.id != message.user.id %}
+        <form>
+          {% if message in g.user.liked_messages %}
+
+          <button formaction="/users/unlike/{{message.id}}" formmethod="POST" id="like-btn" class="btn bg-white">
+            <i class="fas fa-star text-primary fa-2x"></i>
+          </button>
+
+          {% else %}
+
+          <button formaction="/users/liked/{{message.id}}" formmethod="POST" id="like-btn" class="btn bg-white">
+            <i class="far fa-star text-primary fa-2x"></i>
+          </button>
+
+          {% endif %}
+        </form>
+        {% endif %}
       <a href="/messages/{{ message.id }}" class="message-link"></a>
 
       <a href="/users/{{ user.id }}">
