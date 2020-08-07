@@ -7,16 +7,17 @@ from sqlalchemy.exc import IntegrityError
 from forms import UserAddForm, LoginForm, MessageForm, UserUpdateForm
 from models import db, connect_db, User, Message
 
+
 CURR_USER_KEY = "curr_user"
 
 app = Flask(__name__)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
-# app.config['SQLALCHEMY_DATABASE_URI'] = (
-#     os.environ.get('DATABASE_URL', 'postgres:///warbler'))
-app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get(
-    'DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    os.environ.get('DATABASE_URL', 'postgres:///warbler'))
+# app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get(
+#     'DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
@@ -57,13 +58,26 @@ def do_logout():
         del session[CURR_USER_KEY]
 
 
-def check_logged_in():
-    """Check if the user is logged in."""
+# def check_logged_in():
+#     """Check if the user is logged in."""
+#     # Log out what request and g is. Log out what the request and g is in the route. 
+#     print(f"checked logged in g: {g.user}")
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+#     if not g.user:
+#          # not the g we expect. g in a function that is not a route. Pass in g into check_logged_in
+#         print("We reached the flash!")
+#         flash("Access unauthorized.", "danger")
+#         return redirect("/")
 
+# decorator function for checking to see if the user is logged in.
+def check_logged_in(fn):
+    def inner(*args, **kwargs):
+        if not g.user:
+            flash("Access unauthorized.", "danger")
+            return redirect("/")
+        return fn(*args, **kwargs)
+    inner.__name__ = fn.__name__ # TODO Why does this fix our problem?
+    return inner
 
 @app.route('/signup', methods=["GET", "POST"])
 def signup():
@@ -160,30 +174,27 @@ def users_show(user_id):
 
 
 @app.route('/users/<int:user_id>/following')
+@check_logged_in
 def show_following(user_id):
     """Show list of people this user is following."""
-
-    check_logged_in()
 
     user = User.query.get_or_404(user_id)
     return render_template('users/following.html', user=user)
 
 
 @app.route('/users/<int:user_id>/followers')
+@check_logged_in
 def users_followers(user_id):
     """Show list of followers of this user."""
-
-    check_logged_in()
 
     user = User.query.get_or_404(user_id)
     return render_template('users/followers.html', user=user)
 
 
 @app.route('/users/follow/<int:follow_id>', methods=['POST'])
+@check_logged_in
 def add_follow(follow_id):
     """Add a follow for the currently-logged-in user."""
-
-    check_logged_in()
 
     followed_user = User.query.get_or_404(follow_id)
     g.user.following.append(followed_user)
@@ -193,10 +204,9 @@ def add_follow(follow_id):
 
 
 @app.route('/users/stop-following/<int:follow_id>', methods=['POST'])
+@check_logged_in
 def stop_following(follow_id):
     """Have currently-logged-in-user stop following this user."""
-
-    check_logged_in()
 
     followed_user = User.query.get(follow_id)
     g.user.following.remove(followed_user)
@@ -206,10 +216,9 @@ def stop_following(follow_id):
 
 
 @app.route('/users/liked/<int:message_id>', methods=['POST'])
+@check_logged_in
 def like_message(message_id):
     """ Have currently-logged-in-user like the message."""
-
-    check_logged_in()
 
     liked_message = Message.query.get(message_id)
     g.user.liked_messages.append(liked_message)
@@ -219,10 +228,9 @@ def like_message(message_id):
 
 
 @app.route('/users/unlike/<int:message_id>', methods=['POST'])
+@check_logged_in
 def unlike_message(message_id):
     """Have currently logged in user unlike a message."""
-
-    check_logged_in()
 
     liked_message = Message.query.get(message_id)
     g.user.liked_messages.remove(liked_message)
@@ -232,10 +240,9 @@ def unlike_message(message_id):
 
 
 @app.route('/users/<int:user_id>/liked')
+@check_logged_in
 def show_liked(user_id):
     """Displays the liked warbles of the currently logged in user."""
-
-    check_logged_in()
 
     user = User.query.get_or_404(user_id)
 
@@ -277,10 +284,9 @@ def profile():
 
 
 @app.route('/users/delete', methods=["POST"])
+@check_logged_in
 def delete_user():
     """Delete user."""
-
-    check_logged_in()
 
     do_logout()
 
@@ -293,7 +299,9 @@ def delete_user():
 ##############################################################################
 # Messages routes:
 
+
 @app.route('/messages/new', methods=["GET", "POST"])
+@check_logged_in
 def messages_add():
     """Add a message:
 
@@ -304,8 +312,10 @@ def messages_add():
     #     flash("Access unauthorized.", "danger")
     #     return redirect("/")
 
-    check_logged_in()
     # TODO: FIX THIS
+    
+    # research decorator
+        
 
     form = MessageForm()
 

@@ -16,8 +16,8 @@ from models import db, User, Message, Follows
 # before we import our app, since that will have already
 # connected to the database
 
-# os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
-os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
+os.environ['DATABASE_URL'] = "postgresql:///warbler-test"
+# os.environ['DATABASE_URL'] = 'postgres://rainb:qwerty@localhost/warbler-test'
 
 # Now we can import app
 
