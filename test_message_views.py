@@ -151,11 +151,15 @@ class MessageViewTestCase(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn("Test text!", html)
 
+            # select msg
+            testuser = User.query.filter(User.username == 'testuser').first()
+            new_msg = testuser.messages[0]
+
             # logout
-            resp = client.get('/logout', follow_redirects=True)
+            resp = client.post('/logout', follow_redirects=True)
 
             # try to delete message id 0
-            resp = client.post('/messages/0/delete', follow_redirects=True)
+            resp = client.post(f'/messages/{new_msg.id}/delete', follow_redirects=True)
             html = resp.get_data(as_text=True)
 
             self.assertEqual(resp.status_code, 200)
@@ -198,7 +202,7 @@ class MessageViewTestCase(TestCase):
             new_msg = g.user.messages[0]
 
             # logout
-            resp = client.get('/logout', follow_redirects=True)
+            resp = client.post('/logout', follow_redirects=True)
 
             # sign up as testuser2
             other_user = User.signup(

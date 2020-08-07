@@ -57,6 +57,14 @@ def do_logout():
         del session[CURR_USER_KEY]
 
 
+def check_logged_in():
+    """Check if the user is logged in."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+
 @app.route('/signup', methods=["GET", "POST"])
 def signup():
     """Handle user signup.
@@ -112,8 +120,7 @@ def login():
 
     return render_template('users/login.html', form=form)
 
-# TODO: this is better as a POST
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 def logout():
     """Handle logout of user."""
 
@@ -156,9 +163,7 @@ def users_show(user_id):
 def show_following(user_id):
     """Show list of people this user is following."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     user = User.query.get_or_404(user_id)
     return render_template('users/following.html', user=user)
@@ -168,9 +173,7 @@ def show_following(user_id):
 def users_followers(user_id):
     """Show list of followers of this user."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     user = User.query.get_or_404(user_id)
     return render_template('users/followers.html', user=user)
@@ -180,9 +183,7 @@ def users_followers(user_id):
 def add_follow(follow_id):
     """Add a follow for the currently-logged-in user."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     followed_user = User.query.get_or_404(follow_id)
     g.user.following.append(followed_user)
@@ -195,9 +196,7 @@ def add_follow(follow_id):
 def stop_following(follow_id):
     """Have currently-logged-in-user stop following this user."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     followed_user = User.query.get(follow_id)
     g.user.following.remove(followed_user)
@@ -210,9 +209,7 @@ def stop_following(follow_id):
 def like_message(message_id):
     """ Have currently-logged-in-user like the message."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     liked_message = Message.query.get(message_id)
     g.user.liked_messages.append(liked_message)
@@ -225,9 +222,7 @@ def like_message(message_id):
 def unlike_message(message_id):
     """Have currently logged in user unlike a message."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     liked_message = Message.query.get(message_id)
     g.user.liked_messages.remove(liked_message)
@@ -240,9 +235,7 @@ def unlike_message(message_id):
 def show_liked(user_id):
     """Displays the liked warbles of the currently logged in user."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     user = User.query.get_or_404(user_id)
 
@@ -287,9 +280,7 @@ def profile():
 def delete_user():
     """Delete user."""
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    check_logged_in()
 
     do_logout()
 
@@ -309,9 +300,12 @@ def messages_add():
     Show form if GET. If valid, update message and redirect to user page.
     """
 
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
+    # if not g.user:
+    #     flash("Access unauthorized.", "danger")
+    #     return redirect("/")
+
+    check_logged_in()
+    # TODO: FIX THIS
 
     form = MessageForm()
 
