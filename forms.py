@@ -35,3 +35,8 @@ class LoginForm(FlaskForm):
 
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[Length(min=6)])
+
+class DirectMessageForm(MessageForm):
+    """Direct Message form"""
+
+    recipient = StringField('Username of recipient', validators=[DataRequired()])

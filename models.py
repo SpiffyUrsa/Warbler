@@ -44,6 +44,23 @@ class UserLikedMessages(db.Model):
         primary_key=True,
     )
 
+class DirectMessaged(db.Model):
+    """Connection of two users for their direct messages"""
+
+    __tablename__ = 'direct_messaged'
+
+    sender_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete="cascade"),
+        primary_key=True,
+    )
+
+    receiver_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete="cascade"),
+        primary_key=True,
+    )
+
 
 class User(db.Model):
     """User in the system."""
@@ -111,6 +128,20 @@ class User(db.Model):
         'Message',
         secondary="liked_messages",
         backref='liked_users',
+    )
+
+    sent_direct_messages = db.relationship(
+        'DirectMessage',
+        secondary='direct_messaged',
+        primaryjoin=(DirectMessaged.sender_id == id),
+        secondaryjoin=(DirectMessaged.receiver_id == id),
+    )
+
+    received_direct_messages = db.relationship(
+        'DirectMessage',
+        secondary='direct_messaged',
+        primaryjoin=(DirectMessaged.receiver_id == id),
+        secondaryjoin=(DirectMessaged.sender_id == id),
     )
 
     def __repr__(self):
@@ -202,6 +233,47 @@ class Message(db.Model):
     )
 
     user = db.relationship('User')
+
+
+class DirectMessage(db.Model):
+    """A direct message from one user to another."""
+
+    __tablename__ = 'direct_messages'
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    text = db.Column(
+        db.String(140),
+        nullable=False,
+    )
+
+    timestamp = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow(),
+    )
+
+    sender_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+
+    receiver_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False,
+    )
+
+    # sender = db.relationship('User')
+    # receiver = db.relationship('User')
+
+    def __repr__(self):
+        return f"<DirectMessage #{self.id}: {self.text}, {self.timestamp}, {self.sender_id}, {self.receiver_id}>"
 
 
 def connect_db(app):

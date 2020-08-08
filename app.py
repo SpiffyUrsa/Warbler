@@ -14,10 +14,10 @@ app = Flask(__name__)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    os.environ.get('DATABASE_URL', 'postgres:///warbler'))
-# app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get(
-#     'DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
+# app.config['SQLALCHEMY_DATABASE_URI'] = (
+#     os.environ.get('DATABASE_URL', 'postgres:///warbler'))
+app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get(
+    'DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
@@ -351,6 +351,32 @@ def messages_destroy(message_id):
     db.session.commit()
 
     return redirect(f"/users/{g.user.id}")
+
+##############################################################################
+# Direct Messages
+
+@app.route('/directmessages/new', methods=['GET', 'POST'])
+@check_logged_in
+def slide_dm():
+    """Slide a direct message to another user."""
+
+    form = DirectMessageForm()
+
+    if form.validate_on_submit():
+        recipient=form.recipient.data
+
+        check_user = User.query.filter(User.username == recipient).first()
+        if not check_user:
+            flash("User doesn't exist!")
+            return render_template("") #TODO: create this template
+
+        new_dm = DirectMessage(
+            text=form.text.data
+            recipient=recipient
+        )
+
+        db.session.add(new_dm)
+        db.session.commit()
 
 
 ##############################################################################
