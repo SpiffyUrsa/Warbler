@@ -27,41 +27,6 @@ class Follows(db.Model):
     )
 
 
-class UserLikedMessages(db.Model):
-    """Connection of a user to their liked messages"""
-
-    __tablename__ = 'liked_messages'
-
-    liked_message_id = db.Column(
-        db.Integer,
-        db.ForeignKey('messages.id', ondelete="cascade"),
-        primary_key=True,
-    )
-
-    user_id = db.Column(
-        db.Integer,
-        db.ForeignKey('users.id', ondelete="cascade"),
-        primary_key=True,
-    )
-
-class DirectMessaged(db.Model):
-    """Connection of two users for their direct messages"""
-
-    __tablename__ = 'direct_messaged'
-
-    sender_id = db.Column(
-        db.Integer,
-        db.ForeignKey('users.id', ondelete="cascade"),
-        primary_key=True,
-    )
-
-    receiver_id = db.Column(
-        db.Integer,
-        db.ForeignKey('users.id', ondelete="cascade"),
-        primary_key=True,
-    )
-
-
 class User(db.Model):
     """User in the system."""
 
@@ -107,8 +72,7 @@ class User(db.Model):
         nullable=False,
     )
 
-    messages = db.relationship(
-        'Message', order_by='Message.timestamp.desc()', backref='users')
+    messages = db.relationship('Message')
 
     followers = db.relationship(
         "User",
@@ -124,25 +88,7 @@ class User(db.Model):
         secondaryjoin=(Follows.user_being_followed_id == id)
     )
 
-    liked_messages = db.relationship(
-        'Message',
-        secondary="liked_messages",
-        backref='liked_users',
-    )
-
-    sent_direct_messages = db.relationship(
-        'DirectMessage',
-        secondary='direct_messaged',
-        primaryjoin=(DirectMessaged.sender_id == id),
-        secondaryjoin=(DirectMessaged.receiver_id == id),
-    )
-
-    received_direct_messages = db.relationship(
-        'DirectMessage',
-        secondary='direct_messaged',
-        primaryjoin=(DirectMessaged.receiver_id == id),
-        secondaryjoin=(DirectMessaged.sender_id == id),
-    )
+    liked_messages = db.relationship('Message', secondary="likes")
 
     def __repr__(self):
         return f"<User #{self.id}: {self.username}, {self.email}>"
@@ -150,15 +96,13 @@ class User(db.Model):
     def is_followed_by(self, other_user):
         """Is this user followed by `other_user`?"""
 
-        found_user_list = [
-            user for user in self.followers if user == other_user]
+        found_user_list = [user for user in self.followers if user == other_user]
         return len(found_user_list) == 1
 
     def is_following(self, other_user):
-        """Is this user following `other_user`?"""
+        """Is this user following `other_use`?"""
 
-        found_user_list = [
-            user for user in self.following if user == other_user]
+        found_user_list = [user for user in self.following if user == other_user]
         return len(found_user_list) == 1
 
     @classmethod
@@ -178,7 +122,6 @@ class User(db.Model):
         )
 
         db.session.add(user)
-        db.session.commit()
         return user
 
     @classmethod
@@ -207,9 +150,6 @@ class Message(db.Model):
 
     __tablename__ = 'messages'
 
-    def __repr__(self):
-        return f"<Message #{self.id}: {self.user_id}, {self.timestamp}, {self.text}>"
-
     id = db.Column(
         db.Integer,
         primary_key=True,
@@ -235,47 +175,6 @@ class Message(db.Model):
     user = db.relationship('User')
 
 
-class DirectMessage(db.Model):
-    """A direct message from one user to another."""
-
-    __tablename__ = 'direct_messages'
-
-    id = db.Column(
-        db.Integer,
-        primary_key=True,
-        autoincrement=True,
-    )
-
-    text = db.Column(
-        db.String(140),
-        nullable=False,
-    )
-
-    timestamp = db.Column(
-        db.DateTime,
-        nullable=False,
-        default=datetime.utcnow(),
-    )
-
-    sender_id = db.Column(
-        db.Integer,
-        db.ForeignKey('users.id', ondelete='CASCADE'),
-        nullable=False,
-    )
-
-    receiver_id = db.Column(
-        db.Integer,
-        db.ForeignKey('users.id', ondelete='CASCADE'),
-        nullable=False,
-    )
-
-    # sender = db.relationship('User')
-    # receiver = db.relationship('User')
-
-    def __repr__(self):
-        return f"<DirectMessage #{self.id}: {self.text}, {self.timestamp}, {self.sender_id}, {self.receiver_id}>"
-
-
 def connect_db(app):
     """Connect this database to provided Flask app.
 
@@ -284,3 +183,26 @@ def connect_db(app):
 
     db.app = app
     db.init_app(app)
+
+
+class Like(db.Model):
+    """ Join table between users and messages (the join represents a like)."""
+
+    __tablename__ = 'likes'
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='CASCADE'),
+        nullable=False, 
+    )
+
+    message_id = db.Column(
+        db.Integer,
+        db.ForeignKey('messages.id', ondelete='CASCADE'),
+        nullable=False, 
+    )

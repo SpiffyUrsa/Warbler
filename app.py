@@ -1,12 +1,11 @@
 import os
 
-from flask import Flask, render_template, request, flash, redirect, session, g
+from flask import Flask, render_template, request, flash, redirect, session, g, abort
 from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 
-from forms import UserAddForm, LoginForm, MessageForm, UserUpdateForm
+from forms import UserAddForm, UserEditForm, LoginForm, MessageForm
 from models import db, connect_db, User, Message
-
 
 CURR_USER_KEY = "curr_user"
 
@@ -14,10 +13,8 @@ app = Flask(__name__)
 
 # Get DB_URI from environ variable (useful for production/testing) or,
 # if not set there, use development local db.
-# app.config['SQLALCHEMY_DATABASE_URI'] = (
-#     os.environ.get('DATABASE_URL', 'postgres:///warbler'))
-app.config['SQLALCHEMY_DATABASE_URI'] = (os.environ.get(
-    'DATABASE_URL', 'postgres://rainb:qwerty@localhost/warbler'))
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    os.environ.get('DATABASE_URL', 'postgres:///warbler'))
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
@@ -26,8 +23,6 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', "it's a secret")
 # toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
-
-DEFAULT_USER_IMG = '/static/images/default-pic.png'
 
 
 ##############################################################################
@@ -58,27 +53,6 @@ def do_logout():
         del session[CURR_USER_KEY]
 
 
-# def check_logged_in():
-#     """Check if the user is logged in."""
-#     # Log out what request and g is. Log out what the request and g is in the route. 
-#     print(f"checked logged in g: {g.user}")
-
-#     if not g.user:
-#          # not the g we expect. g in a function that is not a route. Pass in g into check_logged_in
-#         print("We reached the flash!")
-#         flash("Access unauthorized.", "danger")
-#         return redirect("/")
-
-# decorator function for checking to see if the user is logged in.
-def check_logged_in(fn):
-    def inner(*args, **kwargs):
-        if not g.user:
-            flash("Access unauthorized.", "danger")
-            return redirect("/")
-        return fn(*args, **kwargs)
-    inner.__name__ = fn.__name__ # TODO Why does this fix our problem?
-    return inner
-
 @app.route('/signup', methods=["GET", "POST"])
 def signup():
     """Handle user signup.
@@ -90,7 +64,8 @@ def signup():
     If the there already is a user with that username: flash message
     and re-present form.
     """
-
+    if CURR_USER_KEY in session:
+        del session[CURR_USER_KEY]
     form = UserAddForm()
 
     if form.validate_on_submit():
@@ -101,10 +76,9 @@ def signup():
                 email=form.email.data,
                 image_url=form.image_url.data or User.image_url.default.arg,
             )
-            # db.session.commit() moved to User.signup()
-            # TODO: is this ok?
+            db.session.commit()
 
-        except IntegrityError:
+        except IntegrityError as e:
             flash("Username already taken", 'danger')
             return render_template('users/signup.html', form=form)
 
@@ -121,6 +95,7 @@ def login():
     """Handle user login."""
 
     form = LoginForm()
+
     if form.validate_on_submit():
         user = User.authenticate(form.username.data,
                                  form.password.data)
@@ -134,14 +109,15 @@ def login():
 
     return render_template('users/login.html', form=form)
 
-@app.route('/logout', methods=['POST'])
+
+@app.route('/logout')
 def logout():
     """Handle logout of user."""
 
     do_logout()
-    flash('Successfully logged out')
 
-    return redirect('/login')
+    flash("You have successfully logged out.", 'success')
+    return redirect("/login")
 
 
 ##############################################################################
@@ -174,27 +150,36 @@ def users_show(user_id):
 
 
 @app.route('/users/<int:user_id>/following')
-@check_logged_in
 def show_following(user_id):
     """Show list of people this user is following."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
     user = User.query.get_or_404(user_id)
     return render_template('users/following.html', user=user)
 
 
 @app.route('/users/<int:user_id>/followers')
-@check_logged_in
 def users_followers(user_id):
     """Show list of followers of this user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
     user = User.query.get_or_404(user_id)
     return render_template('users/followers.html', user=user)
 
 
 @app.route('/users/follow/<int:follow_id>', methods=['POST'])
-@check_logged_in
 def add_follow(follow_id):
     """Add a follow for the currently-logged-in user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
     followed_user = User.query.get_or_404(follow_id)
     g.user.following.append(followed_user)
@@ -204,9 +189,12 @@ def add_follow(follow_id):
 
 
 @app.route('/users/stop-following/<int:follow_id>', methods=['POST'])
-@check_logged_in
 def stop_following(follow_id):
     """Have currently-logged-in-user stop following this user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
     followed_user = User.query.get(follow_id)
     g.user.following.remove(followed_user)
@@ -215,78 +203,72 @@ def stop_following(follow_id):
     return redirect(f"/users/{g.user.id}/following")
 
 
-@app.route('/users/liked/<int:message_id>', methods=['POST'])
-@check_logged_in
-def like_message(message_id):
-    """ Have currently-logged-in-user like the message."""
-
-    liked_message = Message.query.get(message_id)
-    g.user.liked_messages.append(liked_message)
-    db.session.commit()
-
-    return redirect(f"/users/{g.user.id}/liked")
-
-
-@app.route('/users/unlike/<int:message_id>', methods=['POST'])
-@check_logged_in
-def unlike_message(message_id):
-    """Have currently logged in user unlike a message."""
-
-    liked_message = Message.query.get(message_id)
-    g.user.liked_messages.remove(liked_message)
-    db.session.commit()
-
-    return redirect(f"/users/{g.user.id}/liked")
-
-
-@app.route('/users/<int:user_id>/liked')
-@check_logged_in
-def show_liked(user_id):
-    """Displays the liked warbles of the currently logged in user."""
+@app.route('/users/<int:user_id>/likes', methods=["GET"])
+def show_likes(user_id):
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
     user = User.query.get_or_404(user_id)
+    return render_template('users/likes.html', user=user)
 
-    return render_template("users/liked.html", user=user)
+
+@app.route('/messages/<int:message_id>/like', methods=['POST'])
+def add_like(message_id):
+    """Toggle a liked message for the currently-logged-in user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
+
+    liked_message = Message.query.get_or_404(message_id)
+    if liked_message.user_id == g.user.id:
+        return abort(403)
+
+    if liked_message in g.user.liked_messages:
+        g.user.liked_messages.remove(liked_message)
+    else:
+        g.user.liked_messages.append(liked_message)
+
+    db.session.commit()
+
+    return redirect("/")
 
 
 @app.route('/users/profile', methods=["GET", "POST"])
-def profile():
+def edit_profile():
     """Update profile for current user."""
 
     if not g.user:
-        flash('You must login!')
-        return redirect('/login')
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
-    form = UserUpdateForm(obj=g.user)
+    user = g.user
+    form = UserEditForm(obj=user)
+
     if form.validate_on_submit():
-        username = form.username.data
-        email = form.email.data
-        image_url = form.image_url.data or DEFAULT_USER_IMG
-        header_image_url = form.header_image_url.data
-        bio = form.bio.data
-        password = form.password.data
-
-        if User.authenticate(username, password) == g.user:
-            g.user.username = username
-            g.user.email = email
-            g.user.image_url = image_url
-            g.user.header_image_url = header_image_url
-            g.user.bio = bio
+        if User.authenticate(user.username, form.password.data):
+            user.username = form.username.data
+            user.email = form.email.data
+            user.image_url = form.image_url.data or "/static/images/default-pic.png"
+            user.header_image_url = form.header_image_url.data or "/static/images/warbler-hero.jpg"
+            user.bio = form.bio.data
 
             db.session.commit()
+            return redirect(f"/users/{user.id}")
 
-            return redirect(f'/users/{g.user.id}')
-        else:
-            flash("Username and/or password is invalid.")
-            return redirect('/')
-    else:
-        return render_template("users/edit.html", form=form, user_id=g.user.id)
+        flash("Wrong password, please try again.", 'danger')
+
+    return render_template('users/edit.html', form=form, user_id=user.id)
 
 
 @app.route('/users/delete', methods=["POST"])
-@check_logged_in
 def delete_user():
     """Delete user."""
+
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
     do_logout()
 
@@ -299,23 +281,16 @@ def delete_user():
 ##############################################################################
 # Messages routes:
 
-
 @app.route('/messages/new', methods=["GET", "POST"])
-@check_logged_in
 def messages_add():
     """Add a message:
 
     Show form if GET. If valid, update message and redirect to user page.
     """
 
-    # if not g.user:
-    #     flash("Access unauthorized.", "danger")
-    #     return redirect("/")
-
-    # TODO: FIX THIS
-    
-    # research decorator
-        
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
     form = MessageForm()
 
@@ -333,7 +308,7 @@ def messages_add():
 def messages_show(message_id):
     """Show a message."""
 
-    msg = Message.query.get(message_id)
+    msg = Message.query.get_or_404(message_id)
     return render_template('messages/show.html', message=msg)
 
 
@@ -341,9 +316,12 @@ def messages_show(message_id):
 def messages_destroy(message_id):
     """Delete a message."""
 
-    msg = Message.query.get(message_id)
+    if not g.user:
+        flash("Access unauthorized.", "danger")
+        return redirect("/")
 
-    if not g.user or g.user.id != msg.user_id:
+    msg = Message.query.get_or_404(message_id)
+    if msg.user_id != g.user.id:
         flash("Access unauthorized.", "danger")
         return redirect("/")
 
@@ -351,32 +329,6 @@ def messages_destroy(message_id):
     db.session.commit()
 
     return redirect(f"/users/{g.user.id}")
-
-##############################################################################
-# Direct Messages
-
-@app.route('/directmessages/new', methods=['GET', 'POST'])
-@check_logged_in
-def slide_dm():
-    """Slide a direct message to another user."""
-
-    form = DirectMessageForm()
-
-    if form.validate_on_submit():
-        recipient=form.recipient.data
-
-        check_user = User.query.filter(User.username == recipient).first()
-        if not check_user:
-            flash("User doesn't exist!")
-            return render_template("") #TODO: create this template
-
-        new_dm = DirectMessage(
-            text=form.text.data
-            recipient=recipient
-        )
-
-        db.session.add(new_dm)
-        db.session.commit()
 
 
 ##############################################################################
@@ -390,12 +342,13 @@ def homepage():
     - anon users: no messages
     - logged in: 100 most recent messages of followed_users
     """
-    # breakpoint()
+
     if g.user:
-        ids_in_following = [u.id for u in g.user.following] + [g.user.id]
+        following_ids = [f.id for f in g.user.following] + [g.user.id]
+
         messages = (Message
                     .query
-                    .filter(Message.user_id.in_(ids_in_following))
+                    .filter(Message.user_id.in_(following_ids))
                     .order_by(Message.timestamp.desc())
                     .limit(100)
                     .all())
@@ -406,12 +359,12 @@ def homepage():
         return render_template('home-anon.html')
 
 
-##############################################################################
-# Turn off all caching in Flask
-#   (useful for dev; in production, this kind of stuff is typically
-#   handled elsewhere)
-#
-# https://stackoverflow.com/questions/34066804/disabling-caching-in-flask
+@app.errorhandler(404)
+def page_not_found(e):
+    """404 NOT FOUND page."""
+
+    return render_template('404.html'), 404
+
 
 @app.after_request
 def add_header(response):
