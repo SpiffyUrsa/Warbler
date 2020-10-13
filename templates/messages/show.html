@@ -2,57 +2,52 @@
 
 {% block content %}
 
-<div class="bg"></div>
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <ul class="list-group no-hover" id="messages">
-      <li class="list-group-item">
-        <a href="{{ url_for('users_show', user_id=message.user.id) }}">
-          <img src="{{ message.user.image_url }}" alt="" class="timeline-image">
-        </a>
-        <div class="message-area">
-          <div class="message-heading">
-            <a href="/users/{{ message.user.id }}">@{{ message.user.username }}</a>
-            {% if g.user %}
-            {% if g.user.id == message.user.id %}
-            <form method="POST" action="/messages/{{ message.id }}/delete">
-              <button class="btn btn-outline-danger">Delete</button>
-            </form>
-            {% else %}
-            <form>
-              {% if message in g.user.liked_messages %}
-
-              <button formaction="/users/unlike/{{message.id}}" formmethod="POST" id="like-btn" class="btn bg-white">
-                <i class="fas fa-star text-primary fa-2x"></i>
-              </button>
-
-              {% else %}
-
-              <button formaction="/users/liked/{{message.id}}" formmethod="POST" id="like-btn" class="btn bg-white">
-                <i class="far fa-star text-primary fa-2x"></i>
-              </button>
-            </form>
-
-            {% endif %}
-
-            {% if g.user.is_following(message.user) %}
-            <form method="POST" action="/users/stop-following/{{ message.user.id }}">
-              <button class="btn btn-primary">Unfollow</button>
-            </form>
-            {% else %}
-            <form method="POST" action="/users/follow/{{ message.user.id }}">
-              <button class="btn btn-outline-primary btn-sm">Follow</button>
-            </form>
-            {% endif %}
-            {% endif %}
-            {% endif %}
+  <div class="bg"></div>
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <ul class="list-group no-hover" id="messages">
+        <li class="list-group-item">
+          <a href="{{ url_for('users_show', user_id=message.user.id) }}">
+            <img src="{{ message.user.image_url }}" alt="" class="timeline-image">
+          </a>
+          <div class="message-area">
+            <div class="message-heading">
+              <a href="/users/{{ message.user.id }}">@{{ message.user.username }}</a>
+              {% if g.user %}
+                {% if g.user.id == message.user.id %}
+                  <form method="POST"
+                        action="/messages/{{ message.id }}/delete">
+                    <button class="btn btn-outline-danger">Delete</button>
+                  </form>
+                {% elif g.user.is_following(message.user) %}
+                  <form method="POST"
+                        action="/users/stop-following/{{ message.user.id }}">
+                    <button class="btn btn-primary">Unfollow</button>
+                  </form>
+                {% else %}
+                  <form method="POST" action="/users/follow/{{ message.user.id }}">
+                    <button class="btn btn-outline-primary btn-sm">Follow</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            </div>
+            <p class="single-message">{{ message.text }}</p>
+            <span class="text-muted">{{ message.timestamp.strftime('%d %B %Y') }}</span>
           </div>
-          <p class="single-message">{{ message.text }}</p>
-          <span class="text-muted">{{ message.timestamp.strftime('%d %B %Y') }}</span>
-        </div>
-      </li>
-    </ul>
+          {% if message.user_id != g.user.id %}
+            <form method="POST" action="/messages/{{ message.id }}/like" class="messages-like-bottom">
+              <button class="
+                btn 
+                btn-sm 
+                {{'btn-primary' if message in g.user.liked_messages else 'btn-secondary'}}"
+              >
+                <i class="fa fa-thumbs-up"></i> 
+              </button>
+            </form>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
   </div>
-</div>
 
 {% endblock %}

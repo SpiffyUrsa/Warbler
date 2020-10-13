@@ -1,45 +1,37 @@
 {% extends 'users/detail.html' %}
 {% block user_details %}
-<div class="col-sm-6">
-  <ul class="list-group" id="messages">
+  <div class="col-sm-6">
+    <ul class="list-group" id="messages">
 
-    {% for message in user.messages %}
+      {% for message in user.messages %}
 
-    <li class="list-group-item">
-      {% if g.user.id != message.user.id %}
-      <form>
-        {% if message in g.user.liked_messages %}
+        <li class="list-group-item">
+          <a href="/messages/{{ message.id }}" class="message-link"/>
 
-        <button formaction="/users/unlike/{{message.id}}" formmethod="POST" id="like-btn" class="btn bg-white">
-          <i class="fas fa-star text-primary fa-2x"></i>
-        </button>
+          <a href="/users/{{ user.id }}">
+            <img src="{{ user.image_url }}" alt="user image" class="timeline-image">
+          </a>
 
-        {% else %}
+          <div class="message-area">
+            <a href="/users/{{ user.id }}">@{{ user.username }}</a>
+            <span class="text-muted">{{ message.timestamp.strftime('%d %B %Y') }}</span>
+            <p>{{ message.text }}</p>
+          </div>
+          {% if g.user.id != message.user_id %}
+            <form method="POST" action="/messages/{{ message.id }}/like" class="messages-like">
+              <button class="
+                btn
+                btn-sm
+                {{'btn-primary' if message in g.user.liked_messages else 'btn-secondary'}}"
+              >
+                <i class="fa fa-thumbs-up"></i>
+              </button>
+            </form>
+          {% endif %}
+        </li>
 
-        <button formaction="/users/liked/{{message.id}}" formmethod="POST" id="like-btn" class="btn bg-white">
-          <i class="far fa-star text-primary fa-2x"></i>
-        </button>
+      {% endfor %}
 
-        {% endif %}
-      </form>
-      {% endif %}
-      <a href="/messages/{{ message.id }}" class="message-link"></a>
-
-      <a href="/users/{{ user.id }}">
-        <img src="{{ user.image_url }}" alt="user image" class="timeline-image">
-      </a>
-
-      <div class="message-area">
-        <a href="/users/{{ user.id }}">@{{ user.username }}</a>
-        <span class="text-muted">
-          {{ message.timestamp.strftime('%d %B %Y') }}
-        </span>
-        <p>{{ message.text }}</p>
-      </div>
-    </li>
-
-    {% endfor %}
-
-  </ul>
-</div>
+    </ul>
+  </div>
 {% endblock %}

@@ -17,17 +17,14 @@
                   </div>
                   <div class="card-contents">
                     <a href="/users/{{ user.id }}" class="card-link">
-                      <img
-                          src="{{ user.image_url }}"
-                          alt="Image for {{ user.username }}"
-                          class="card-image">
+                      <img src="{{ user.image_url }}" alt="Image for {{ user.username }}" class="card-image">
                       <p>@{{ user.username }}</p>
                     </a>
 
                     {% if g.user %}
                       {% if g.user.is_following(user) %}
-                        <form method="POST"
-                          action="/users/stop-following/{{ user.id }}">
+                        <form method="POST">
+                              action="/users/stop-following/{{ user.id }}">
                           <button class="btn btn-primary btn-sm">Unfollow</button>
                         </form>
                       {% else %}

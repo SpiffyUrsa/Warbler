@@ -12,13 +12,9 @@
               <div class="image-wrapper">
                 <img src="{{ follower.header_image_url }}" alt="" class="card-hero">
               </div>
-
               <div class="card-contents">
                 <a href="/users/{{ follower.id }}" class="card-link">
-                  <img
-                      src="{{ follower.image_url }}"
-                      alt="Image for {{ follower.username }}"
-                      class="card-image">
+                  <img src="{{ follower.image_url }}" alt="Image for {{ follower.username }}" class="card-image">
                   <p>@{{ follower.username }}</p>
                 </a>
 
@@ -34,7 +30,6 @@
                 {% endif %}
 
               </div>
-
               <p class="card-bio">{{ follower.bio }}</p>
             </div>
           </div>
